@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARIA — Live Avatar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-void:      #17171E;
+      --color-paper:     #FFFFFF;
+      --color-ash:       #212129;
+      --color-mist:      #8B8B96;
+      --color-fog:       rgba(255,255,255,0.06);
+      --color-hairline:  rgba(255,255,255,0.12);
+
+      --font-display: 'Cabinet Grotesk', sans-serif;
+      --font-body:    'Inter', sans-serif;
+      --font-mono:    'JetBrains Mono', monospace;
+
+      --sidebar-w:   260px;
+      --chat-w:      380px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: var(--font-body);
+      background: var(--color-void);
+      color: var(--color-paper);
+      overflow: hidden;
+    }
+    #app { display: flex; height: 100vh; width: 100vw; }
+    #sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--color-void);
+      border-right: 1px solid var(--color-hairline);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: width 0.22s ease, min-width 0.22s ease, opacity 0.15s ease;
+    }
+    #sidebar.collapsed { width: 0; min-width: 0; border-right: none; opacity: 0; pointer-events: none; }
+    #sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 10px; flex-shrink: 0; white-space: nowrap; }
+    #sidebar-title { font-family: var(--font-display); font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-mist); }
+    .icon-btn { appearance: none; border: none; width: 30px; height: 30px; border-radius: 8px; background: transparent; color: var(--color-mist); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: background 0.15s, color 0.15s; }
+    .icon-btn:hover { background: var(--color-ash); color: var(--color-paper); }
+    #docs-section { padding: 0 14px 12px; flex-shrink: 0; border-bottom: 1px solid var(--color-hairline); white-space: nowrap; }
+    #docs-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-mist); font-weight: 700; margin-bottom: 8px; }
+    #docs-list { display: flex; flex-direction: column; gap: 6px; }
+    .doc-chip { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--color-mist); background: var(--color-ash); border: 1px solid var(--color-hairline); border-radius: 7px; padding: 6px 9px; overflow: hidden; }
+    .doc-chip .doc-icon { flex-shrink: 0; font-size: 12px; }
+    .doc-chip .doc-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .doc-chip .doc-meta { flex-shrink: 0; font-family: var(--font-mono); font-size: 10px; color: var(--color-mist); }
+    #docs-empty { font-family: var(--font-display); font-size: 12.5px; color: var(--color-mist); padding: 2px 0; }
+    #history-list { flex: 1; overflow-y: auto; padding: 10px 8px 14px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
+    #history-list::-webkit-scrollbar { width: 4px; }
+    #history-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    #history-empty { font-family: var(--font-display); font-size: 13px; color: var(--color-mist); padding: 10px 8px; line-height: 1.5; }
+    .history-item { display: block; width: 100%; text-align: left; appearance: none; border: none; background: transparent; color: var(--color-mist); font-family: inherit; font-size: 12.5px; line-height: 1.4; padding: 9px 10px; border-radius: 9px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background 0.15s, color 0.15s; margin-bottom: 2px; }
+    .history-item:hover { background: var(--color-ash); color: var(--color-paper); }
+    .history-item.active { background: var(--color-fog); color: var(--color-paper); }
+    .history-item .h-time { display: block; font-family: var(--font-mono); font-size: 10px; color: var(--color-mist); margin-top: 2px; }
+    .history-item .h-mode { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 1px 5px; border-radius: 4px; margin-left: 5px; vertical-align: middle; }
+    .h-mode.rag  { background: var(--color-fog); color: var(--color-paper); }
+    .h-mode.web  { background: var(--color-fog);    color: var(--color-paper); }
+    #main { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; }
+    #topbar { flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--color-hairline); background: var(--color-ash); }
+    #brand { display: flex; align-items: center; gap: 10px; }
+    #brand-mark { font-family: var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: 0.02em; color: var(--color-paper); }
+    #status-pill { display: flex; align-items: center; gap: 7px; padding: 4px 11px 4px 8px; background: var(--color-ash); border: 1px solid var(--color-hairline); border-radius: 20px; font-size: 12px; color: var(--color-mist); }
+    #dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-mist); transition: background 0.3s, box-shadow 0.3s; flex-shrink: 0; }
+    #dot.connected { background: var(--color-paper);  box-shadow: 0 0 6px rgba(62,203,130,0.6); }
+    #dot.speaking  { background: var(--color-paper); box-shadow: 0 0 8px rgba(255,180,84,0.55); animation: pulse 0.9s infinite; }
+    #dot.error     { background: var(--color-paper);  box-shadow: 0 0 6px rgba(239,83,80,0.6); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+    #topbar-spacer { flex: 1; }
+    #doc-badge { display: none; align-items: center; gap: 7px; font-size: 12px; color: var(--color-paper); background: rgba(62,203,130,0.1); border: 1px solid rgba(62,203,130,0.25); border-radius: 20px; padding: 5px 12px 5px 10px; white-space: nowrap; }
+    #doc-badge.show { display: flex; }
+    #doc-badge-name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #content { flex: 1; min-height: 0; display: flex; }
+    #scene { flex: 1; min-width: 0; position: relative; overflow: hidden; background: radial-gradient(ellipse 65% 60% at 50% 38%, #1a1c24 0%, var(--color-void) 72%); }
+    #canvas { width: 100%; height: 100%; display: block; }
+    #engine-note { display: none; position: absolute; bottom: 16px; left: 20px; font-size: 11px; color: var(--color-mist); z-index: 4; max-width: 80%; font-variant-numeric: tabular-nums; pointer-events: none; }
+    #upload-popover { position: absolute; bottom: 16px; left: 16px; width: 320px; background: var(--color-ash); border: 1px solid var(--color-hairline); border-radius: 14px; padding: 16px; z-index: 10; opacity: 0; transform: translateY(8px); transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none;  }
+    #upload-popover.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    #upload-popover-title { display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--color-mist); margin-bottom: 12px; }
+    #upload-popover-title .upload-again-btn { appearance: none; border: none; background: none; color: var(--color-paper); font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0; cursor: pointer; display: none; }
+    #upload-popover-title .upload-again-btn.show { display: inline; }
+    #drop-zone { border: 1.5px dashed rgba(255,255,255,0.13); border-radius: 10px; padding: 18px 14px; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; position: relative; }
+    #drop-zone:hover, #drop-zone.drag-over { border-color: var(--color-hairline); background: var(--color-fog); }
+    #drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    #drop-icon { font-size: 22px; margin-bottom: 7px; line-height: 1; }
+    #drop-label { font-size: 12.5px; color: var(--color-mist); line-height: 1.5; }
+    #drop-label span { color: var(--color-paper); font-weight: 600; }
+    #drop-sub { font-size: 10.5px; color: var(--color-mist); margin-top: 4px; }
+    #selected-file { display: none; margin-top: 10px; align-items: center; gap: 8px; background: rgba(255,255,255,0.04); border: 1px solid var(--color-hairline); border-radius: 8px; padding: 8px 10px; }
+    #selected-file.visible { display: flex; }
+    #selected-file-icon { font-size: 16px; flex-shrink: 0; }
+    #selected-file-name { font-size: 12px; color: var(--color-paper); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #selected-file-clear { appearance: none; border: none; background: none; color: var(--color-mist); cursor: pointer; font-size: 13px; padding: 0; transition: color 0.15s; }
+    #selected-file-clear:hover { color: var(--color-paper); }
+    #upload-action { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; gap: 10px; }
+    #upload-status { font-size: 11.5px; color: var(--color-mist); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #upload-status.ok  { color: var(--color-paper); }
+    #upload-status.err { color: var(--color-paper); }
+    #upload-action-btn { appearance: none; border: none; font-family: inherit; padding: 9px 18px; background: var(--color-paper); color: var(--color-void); font-weight: 600; font-size: 12.5px; border-radius: 8px; cursor: pointer; white-space: nowrap; transition: opacity 0.15s, transform 0.08s; flex-shrink: 0; }
+    #upload-action-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    #upload-action-btn:not(:disabled):hover { opacity: 0.88; }
+    #upload-action-btn:not(:disabled):active { transform: scale(0.97); }
+    #upload-confirmed { display: none; align-items: flex-start; gap: 10px; background: rgba(62,203,130,0.08); border: 1px solid rgba(62,203,130,0.22); border-radius: 10px; padding: 12px 13px; }
+    #upload-confirmed.show { display: flex; }
+    #upload-confirmed .uc-icon { font-size: 17px; color: var(--color-paper); flex-shrink: 0; margin-top: 1px; }
+    #upload-confirmed .uc-text { font-size: 12.5px; color: var(--color-paper); line-height: 1.5; }
+    #upload-confirmed .uc-meta { font-size: 11px; color: var(--color-mist); margin-top: 2px; }
+    #chat-panel { width: var(--chat-w); flex-shrink: 0; background: var(--color-ash); border-left: 1px solid var(--color-hairline); display: flex; flex-direction: column; min-height: 0; }
+    #chat-panel-header { flex-shrink: 0; padding: 13px 16px; border-bottom: 1px solid var(--color-hairline); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-mist); }
+    #chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
+    #chat-messages::-webkit-scrollbar { width: 4px; }
+    #chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    #chat-empty { margin: auto; text-align: center; color: var(--color-mist); font-size: 13px; line-height: 1.6; max-width: 220px; }
+    .msg-pair { display: flex; flex-direction: column; gap: 10px; scroll-margin-top: 12px; }
+    .msg-row { display: flex; }
+    .msg-row.user { justify-content: flex-end; }
+    .msg-row.assistant { justify-content: flex-start; }
+    .msg-bubble { max-width: 88%; font-size: 13.5px; line-height: 1.6; padding: 10px 13px; border-radius: 14px; white-space: pre-wrap; word-break: break-word; }
+    .msg-row.user .msg-bubble { background: var(--color-paper); color: #fff; border-bottom-right-radius: 4px; }
+    .msg-row.user.web-mode .msg-bubble { background: #0e7490; }
+    .msg-row.assistant .msg-bubble { background: var(--color-ash); border: 1px solid var(--color-hairline); color: var(--color-paper); border-bottom-left-radius: 4px; }
+    .msg-bubble.streaming::after { content: '▍'; display: inline-block; color: var(--color-paper); animation: blink 0.75s step-end infinite; margin-left: 2px; font-size: 11px; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .msg-time { font-size: 10px; color: var(--color-mist); margin-top: 3px; }
+    .msg-row.user .msg-time { text-align: right; }
+    .sources-card { margin-top: 6px; padding: 10px 12px; background: var(--color-fog); border: 1px solid var(--color-hairline); border-radius: 10px; font-size: 12px; }
+    .sources-card .sources-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-paper); margin-bottom: 6px; }
+    .sources-card a { display: block; color: var(--color-paper); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 2px 0; transition: opacity 0.15s; }
+    .sources-card a:hover { opacity: 0.75; text-decoration: underline; }
+    #bottom-bar { flex-shrink: 0; position: relative; z-index: 5; background: var(--color-ash); border-top: 1px solid var(--color-hairline); padding: 12px 16px 14px; display: flex; align-items: center; gap: 10px; }
+    #plus-btn { appearance: none; border: none; width: 38px; height: 38px; border-radius: 50%; background: var(--color-ash); border: 1px solid var(--color-hairline); color: var(--color-mist); font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.2s; }
+    #plus-btn:hover { background: var(--color-ash); color: var(--color-paper); }
+    #plus-btn.active { background: var(--color-fog); border-color: var(--color-hairline); color: var(--color-paper); transform: rotate(45deg); }
+    #plus-btn.has-doc::after { content: ''; position: absolute; width: 8px; height: 8px; border-radius: 50%; background: var(--color-paper); border: 2px solid var(--color-ash); transform: translate(11px, -11px); }
+    #mode-toggle { display: flex; align-items: center; background: var(--color-ash); border: 1px solid var(--color-hairline); border-radius: 999px; padding: 3px; gap: 2px; flex-shrink: 0; }
+    .mode-btn { appearance: none; border: none; padding: 5px 12px; border-radius: 999px; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.18s, color 0.18s, box-shadow 0.18s; color: var(--color-mist); background: transparent; white-space: nowrap; }
+    .mode-btn:hover { color: var(--color-mist); }
+    #mode-toggle.mode-rag  #btn-rag { background: var(--color-paper); color: #fff; box-shadow: 0 1px 8px rgba(108,99,255,0.35); }
+    #mode-toggle.mode-web  #btn-web { background: var(--color-paper); color: #fff; box-shadow: 0 1px 8px rgba(56,189,248,0.35); }
+    #mode-toggle.mode-web  #btn-rag { color: var(--color-mist); }
+    #mode-toggle.mode-rag  #btn-web { color: var(--color-mist); }
+    #ask-pill { flex: 1; display: flex; align-items: center; background: var(--color-ash); border: 1px solid var(--color-hairline); border-radius: 999px; padding: 0 6px 0 16px; gap: 6px; transition: border-color 0.18s; }
+    #ask-pill:focus-within { border-color: var(--color-hairline); }
+    #ask-pill.web-active:focus-within { border-color: var(--color-hairline); }
+    #ask-input { flex: 1; border: none; background: transparent; color: var(--color-paper); font-family: inherit; font-size: 14.5px; padding: 10px 0; outline: none; }
+    #ask-input::placeholder { color: var(--color-mist); }
+    #ask-input:disabled { opacity: 0.4; cursor: not-allowed; }
+    #send-btn { appearance: none; border: none; width: 32px; height: 32px; border-radius: 50%; background: var(--color-paper); color: var(--color-void); font-size: 14px; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: opacity 0.15s, transform 0.08s, background 0.18s; }
+    #send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    #send-btn:not(:disabled):hover { opacity: 0.85; }
+    #send-btn:not(:disabled):active { transform: scale(0.94); }
+    #send-btn.web-active { background: var(--color-paper); }
+    #mic-btn { appearance: none; border: none; width: 38px; height: 38px; border-radius: 50%; background: var(--color-ash); border: 1px solid var(--color-hairline); color: var(--color-mist); font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: background 0.15s, color 0.15s; user-select: none; }
+    #mic-btn:hover { background: var(--color-ash); color: var(--color-paper); }
+    #mic-btn.recording { background: var(--color-paper); border-color: var(--color-paper); color: #fff; animation: pulse 0.9s infinite; }
+    #mic-btn.processing { background: var(--color-fog); border-color: var(--color-hairline); color: var(--color-paper); }
+    @media (max-width: 980px) { :root { --chat-w: 300px; } }
+    #header-mode-banner {
+      width: 100%;
+      background: var(--color-fog);
+      color: var(--color-mist);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      text-align: center;
+      padding: 4px 0;
+      border-bottom: 1px solid var(--color-hairline);
+      transition: opacity 0.2s ease;
+      flex-shrink: 0;
+      opacity: 1;
+    }
+
+    /* ChatGPT-style History Groups */
+    .history-group-label { font-family: var(--font-body); font-weight: 600; font-size: 11px; color: var(--color-mist); margin: 16px 8px 8px; }
+    
+    /* Hover Actions */
+    .history-item { position: relative; display: flex; align-items: center; justify-content: space-between; }
+    .history-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; }
+    .history-actions { display: none; align-items: center; gap: 4px; background: inherit; padding-left: 8px; }
+    .history-item:hover .history-actions { display: flex; }
+    .h-action-btn { appearance: none; border: none; background: transparent; color: var(--color-mist); cursor: pointer; padding: 2px; }
+    .h-action-btn:hover { color: var(--color-paper); }
+    .h-action-btn svg { width: 14px; height: 14px; }
+
+    /* Mode Dropdown Redesign */
+    #mode-wrapper { position: relative; flex-shrink: 0; }
+    #mode-selector-btn { appearance: none; border: 1px solid var(--color-hairline); border-radius: 8px; background: var(--color-ash); color: var(--color-paper); font-family: var(--font-body); font-size: 13px; font-weight: 500; padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.15s; }
+    #mode-selector-btn:hover { background: var(--color-fog); }
+    #mode-dropdown-menu { position: absolute; bottom: calc(100% + 8px); left: 0; width: 160px; background: var(--color-ash); border: 1px solid var(--color-hairline); border-radius: 8px; padding: 6px; display: none; flex-direction: column; gap: 2px; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    #mode-dropdown-menu.open { display: flex; }
+    .mode-option { appearance: none; border: none; background: transparent; color: var(--color-mist); font-family: var(--font-body); font-size: 13px; text-align: left; padding: 8px 10px; border-radius: 6px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+    .mode-option:hover { background: var(--color-fog); color: var(--color-paper); }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <aside id="sidebar">
+    <div id="sidebar-header">
+      <span id="sidebar-title">History</span>
+      <button class="icon-btn" id="sidebar-close-btn" title="Hide history">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <div id="docs-section">
+      <div id="docs-label">Documents</div>
+      <div id="docs-list">
+        <div id="docs-empty">No documents uploaded yet</div>
+      </div>
+    </div>
+
+    <div id="history-list">
+      <div id="history-empty">Your questions will show up here as you ask them.</div>
+    </div>
+  </aside>
+
+  <div id="main">
+    <div id="header-mode-banner">You're in Document Mode</div>
+
+    <div id="topbar">
+      <button class="icon-btn" id="sidebar-open-btn" title="Show history" style="display:none">
+        <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><path d="M2 4h13M2 8.5h13M2 13h13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+      <div id="brand">
+        <span id="brand-mark">ARIA</span>
+        <div id="status-pill"><div id="dot"></div><span id="status-text">Connecting…</span></div>
+      </div>
+      <div id="topbar-spacer"></div>
+      <div id="doc-badge">📄 <span id="doc-badge-name"></span></div>
+    </div>
+
+    <div id="content">
+
+      <div id="scene">
+        <canvas id="canvas"></canvas>
+        <div id="engine-note"></div>
+
+        <div id="upload-popover">
+          <div id="upload-popover-title">
+            <span>Upload document</span>
+            <button class="upload-again-btn" id="upload-again-btn">Upload another</button>
+          </div>
+
+          <div id="upload-fresh">
+            <div id="drop-zone">
+              <input type="file" id="file-input" accept=".pdf,.txt,.md,.docx"/>
+              <div id="drop-icon">📄</div>
+              <div id="drop-label"><span>Choose a file</span> or drag it here</div>
+              <div id="drop-sub">PDF, TXT, MD or DOCX</div>
+            </div>
+
+            <div id="selected-file">
+              <span id="selected-file-icon">📎</span>
+              <span id="selected-file-name"></span>
+              <button id="selected-file-clear" title="Remove">✕</button>
+            </div>
+
+            <div id="upload-action">
+              <span id="upload-status"></span>
+              <button id="upload-action-btn" class="action-btn" disabled>Upload</button>
+            </div>
+          </div>
+
+          <div id="upload-confirmed">
+            <span class="uc-icon">✓</span>
+            <div>
+              <div class="uc-text">Uploaded <strong id="uc-filename"></strong></div>
+              <div class="uc-meta" id="uc-meta"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside id="chat-panel">
+        <div id="chat-panel-header">Conversation</div>
+        <div id="chat-messages">
+          <div id="chat-empty">Ask ARIA something, or hold the mic button to talk.</div>
+        </div>
+      </aside>
+
+    </div>
+
+    <div id="bottom-bar">
+
+      <button id="plus-btn" title="Attach document">+</button>
+
+      <div id="mode-wrapper">
+        <button id="mode-selector-btn">
+          <span id="mode-selector-label">Document Mode</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div id="mode-dropdown-menu">
+          <button class="mode-option" data-mode="rag">Document Mode</button>
+          <button class="mode-option" data-mode="web">Web Search</button>
+        </div>
+      </div>
+
+      <div id="ask-pill">
+        <input id="ask-input" type="text" placeholder="Ask anything…" maxlength="1000" disabled/>
+        <button id="send-btn" title="Ask" disabled>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M7 12V2M7 2L3 6M7 2L11 6" stroke="var(--color-void)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <button id="mic-btn" title="Hold to talk">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="1" width="6" height="9" rx="3" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M2 8c0 3.314 2.686 6 6 6s6-2.686 6-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="8" y1="14" x2="8" y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three":         "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ── CONFIG ──────────────────────────────────────────── */
+const AVATAR_GLB     = 'assets/avatar.glb';
+const WS_URL         = 'ws://localhost:8765';
+const A2F_FPS        = 30;
+const FRAME_INTERVAL = 1000 / A2F_FPS;
+const BUFFER_AHEAD   = 2;
+
+/* ── MODE STATE ──────────────────────────────────────── */
+let currentMode = 'rag';
+
+const modeSelectorLabel = document.getElementById('mode-selector-label');
+const modeSelectorBtn = document.getElementById('mode-selector-btn');
+const modeDropdownMenu = document.getElementById('mode-dropdown-menu');
+modeSelectorBtn.addEventListener('click', () => {
+  modeDropdownMenu.classList.toggle('open');
+});
+document.querySelectorAll('.mode-option').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    setMode(e.target.dataset.mode);
+    modeDropdownMenu.classList.remove('open');
+  });
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#mode-wrapper')) modeDropdownMenu.classList.remove('open');
+});
+const headerModeBannerEl = document.getElementById('header-mode-banner');
+
+
+const askPillEl    = document.getElementById('ask-pill');
+const sendBtnEl    = document.getElementById('send-btn');
+const askInputEl   = document.getElementById('ask-input');
+
+function setMode(mode) {
+  currentMode = mode;
+  modeSelectorLabel.textContent = mode === 'web' ? 'Web Search' : 'Document Mode';
+  
+  headerModeBannerEl.style.opacity = '0';
+  setTimeout(() => {
+    headerModeBannerEl.textContent = mode === 'web' ? "You're in Web Mode" : "You're in Document Mode";
+    headerModeBannerEl.style.opacity = '1';
+  }, 150);
+  if (mode === 'web') {
+    askPillEl.classList.add('web-active');
+    sendBtnEl.classList.add('web-active');
+    askInputEl.placeholder = 'Search the web…';
+  } else {
+    askPillEl.classList.remove('web-active');
+    sendBtnEl.classList.remove('web-active');
+    askInputEl.placeholder = 'Ask anything…';
+  }
+}
+
+
+
+
+/* ── THREE.JS SCENE ──────────────────────────────────── */
+const canvas   = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x000000, 0);
+
+const scene = new THREE.Scene();
+scene.background = null;
+
+const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 100);
+camera.position.set(0, 1.55, 0.9);
+camera.lookAt(0, 1.55, 0);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 1.55, 0);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const key = new THREE.DirectionalLight(0xfff5e0, 1.2);
+key.position.set(0.5, 2, 1.5); scene.add(key);
+const fill = new THREE.DirectionalLight(0xdceeff, 0.4);
+fill.position.set(-1, 1, 0.5); scene.add(fill);
+
+function resizeRenderer() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (renderer.domElement.width !== w || renderer.domElement.height !== h) {
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+}
+new ResizeObserver(resizeRenderer).observe(canvas);
+
+/* ── AVATAR ──────────────────────────────────────────── */
+let headMesh = null, teethMesh = null;
+let headBone = null, eyeBoneL = null, eyeBoneR = null;
+let morphMap = {};
+
+const loader = new GLTFLoader();
+loader.load(AVATAR_GLB, (gltf) => {
+  scene.add(gltf.scene);
+  gltf.scene.traverse(obj => {
+    if (!obj.isMesh || !obj.morphTargetDictionary) return;
+    const n = obj.name.toLowerCase();
+    if (/head/.test(n) && !headMesh) headMesh  = obj;
+    if (/teeth/.test(n))             teethMesh = obj;
+  });
+
+  // FIX: force these meshes to always render regardless of Three.js's
+  // frustum-culling bounding-sphere check. Morph target displacement
+  // (e.g. JawOpen) is not accounted for in the mesh's static bounding
+  // sphere, so on some builds Three.js can decide the mesh is "off camera"
+  // and skip drawing updated frames even though morphTargetInfluences are
+  // being written correctly every tick. This guarantees the mesh always
+  // draws so blendshape updates are never silently dropped by culling.
+  if (headMesh)  headMesh.frustumCulled  = false;
+  if (teethMesh) teethMesh.frustumCulled = false;
+
+  gltf.scene.traverse(obj => {
+    if (!obj.isBone) return;
+    const n = obj.name.toLowerCase();
+    if (n === 'head')     headBone = obj;
+    if (n === 'lefteye')  eyeBoneL = obj;
+    if (n === 'righteye') eyeBoneR = obj;
+  });
+  if (headMesh) {
+    for (const [k, idx] of Object.entries(headMesh.morphTargetDictionary))
+      morphMap[k.toLowerCase()] = idx;
+    // DIAGNOSTIC (lip sync investigation): print the FULL GLB morph target
+    // name list, not just the count. If lip sync is silent despite frames
+    // arriving with a nonzero blendShapes dict, diff this list against the
+    // "A2F header received — N blendshapes: [...]" line logged server-side
+    // in receiver_streaming.py. A2F's NIM emits a fixed vocabulary (ARKit-
+    // style names like JawOpen, MouthSmileLeft, etc.); Ready Player Me GLBs
+    // occasionally use different names for a handful of shapes, and those
+    // specific shapes will never animate no matter how correct the pipeline
+    // is upstream -- only a name diff will reveal that.
+    console.log('[headMesh]', headMesh.name, '— morphs:', Object.keys(morphMap).length);
+    console.log('[headMesh] full morph target list:', Object.keys(morphMap));
+  } else {
+    console.warn('[GLB] No mesh matched /head/ in its name — headMesh is null. ' +
+                  'applyBlendshapes() will no-op every frame. Check avatar.glb mesh names.');
+  }
+  setInputEnabled(true);
+  setStatus('connected', 'Ready');
+  startRenderLoop();
+}, undefined, e => { console.error('[GLB]', e); setStatus('error', 'GLB load failed'); });
+
+/* ── BLENDSHAPES ─────────────────────────────────────── */
+function resolveMorph(name) { return morphMap[name.toLowerCase()] ?? -1; }
+
+// --- Fix B (session 3): persistent emotion blendshape layer.
+// A2F sends 55 blendshapes per frame, but not every frame carries
+// meaningful emotion data — lipsync-heavy frames can arrive with
+// near-zero values for emotion shapes and zero them out on every tick.
+// Emotion shape values are captured here from incoming A2F frames and
+// re-applied every render tick AFTER lipsync/procedural motion, so they
+// persist independently instead of flickering out.
+const EMOTION_SHAPES = [
+  'BrowInnerUp', 'BrowDownLeft', 'BrowDownRight',
+  'BrowOuterUpLeft', 'BrowOuterUpRight',
+  'EyeSquintLeft', 'EyeSquintRight',
+  'EyeWideLeft', 'EyeWideRight',
+];
+let _currentEmotionValues = {};
+
+const CANCELING_PAIRS = [
+  ['MouthSmileLeft', 'MouthFrownLeft'],
+  ['MouthSmileRight', 'MouthFrownRight'],
+];
+const SYMMETRIC_PAIRS = [
+  ['BrowDownLeft', 'BrowDownRight'],
+  ['BrowOuterUpLeft', 'BrowOuterUpRight'],
+  ['MouthSmileLeft', 'MouthSmileRight'],
+  ['MouthFrownLeft', 'MouthFrownRight'],
+  ['CheekSquintLeft', 'CheekSquintRight'],
+  ['NoseSneerLeft', 'NoseSneerRight'],
+  ['EyeSquintLeft', 'EyeSquintRight'],
+  ['EyeWideLeft', 'EyeWideRight'],
+];
+
+function applyCancelingPairs(vals) {
+  // For each canceling pair, only the larger of the two survives --
+  // matches the paper's "set the upper bound of the smaller activation
+  // to 0" rule.
+  for (const [a, b] of CANCELING_PAIRS) {
+    if (vals[a] === undefined || vals[b] === undefined) continue;
+    if (vals[a] >= vals[b]) vals[b] = 0;
+    else vals[a] = 0;
+  }
+}
+
+function applySymmetry(vals) {
+  // Average left/right pairs so residual noise-driven asymmetry doesn't
+  // read as a lopsided smirk.
+  for (const [a, b] of SYMMETRIC_PAIRS) {
+    if (vals[a] === undefined || vals[b] === undefined) continue;
+    const avg = (vals[a] + vals[b]) / 2;
+    vals[a] = avg;
+    vals[b] = avg;
+  }
+}
+
+// --- TEMPORARY DEBUG HOOK (remove once emotions are confirmed working) ---
+// Exposes live state to the browser console so you can check, during an
+// actual chat (not the standalone diagnostic script), whether emotion
+// data is reaching the frontend at all.
+// In DevTools console, run:  window.__ariaEmotionDebug.values
+window.__ariaEmotionDebug = {
+  get values() { return { ..._currentEmotionValues }; },
+  EMOTION_SHAPES,
+};
+let _loggedFirstCapture = false;
+
+// --- Fix I (this session): MouthSmileLeft/Right and MouthFrownLeft/Right
+// removed from the gain map. These were being held at a fixed value every
+// render tick by applyEmotionLayer(), which runs AFTER applyBlendshapes()
+// -- so while real lipsync data (JawOpen, MouthFunnel, MouthClose, etc.)
+// was animating the mouth for actual speech, the smile/frown corners were
+// simultaneously pinned to a stale value from whenever emotion was last
+// captured. That conflict between "live lipsync mouth" and "static forced
+// smile/frown" is what read as weird/distorted lip movement during speech.
+// Mouth emotion now comes ONLY from A2F's real per-frame output inside
+// applyBlendshapes() -- no persistent override. Brows/eyes stay here since
+// lipsync never touches those, so there's no conflict there.
+const EMOTION_LAYER_CAP = 0.55;
+const EMOTION_GAIN_MAP = {
+  BrowInnerUp:       1.3,
+  BrowDownLeft:      1.3,
+  BrowDownRight:     1.3,
+  BrowOuterUpLeft:   3.0,
+  BrowOuterUpRight:  3.0,
+  EyeSquintLeft:     2.0,
+  EyeSquintRight:    2.0,
+  EyeWideLeft:       2.0,
+  EyeWideRight:      2.0,
+};
+const DEFAULT_EMOTION_GAIN = 2.0; // fallback for any shape not listed above
+
+function applyEmotionLayer() {
+  if (!headMesh) return;
+  for (const [key, val] of Object.entries(_currentEmotionValues)) {
+    const idx = resolveMorph(key);
+    if (idx >= 0) {
+      const gain = EMOTION_GAIN_MAP[key] ?? DEFAULT_EMOTION_GAIN;
+      const boosted = Math.min(val * gain, EMOTION_LAYER_CAP);
+      headMesh.morphTargetInfluences[idx] = boosted;
+      if (teethMesh) teethMesh.morphTargetInfluences[idx] = boosted;
+    }
+  }
+}
+
+function updateEmotionLayer(bs) {
+  // Called from applyBlendshapes() — captures emotion shape values into
+  // _currentEmotionValues so applyEmotionLayer() can re-apply them every
+  // render tick regardless of what the current frame's dict contains.
+  for (const key of EMOTION_SHAPES) {
+    const val = bs[key] ?? bs[key.toLowerCase()];
+    if (val !== undefined) {
+      _currentEmotionValues[key] = val;
+    }
+  }
+  // --- Fix C: enforce canceling pairs, then symmetry, on the captured
+  // values before they persist into the render layer.
+  applyCancelingPairs(_currentEmotionValues);
+  applySymmetry(_currentEmotionValues);
+  // --- TEMPORARY DEBUG HOOK (remove once emotions are confirmed working) ---
+  if (!_loggedFirstCapture && Object.values(_currentEmotionValues).some(v => v > 0.01)) {
+    console.log('updateEmotionLayer: first non-trivial capture ->', { ..._currentEmotionValues });
+    _loggedFirstCapture = true;
+  }
+}
+
+// DIAGNOSTIC (lip sync investigation): tracks which A2F blendshape names
+// fail to resolve against the GLB's morphTargetDictionary, and logs the
+// full set exactly ONCE (not every frame — that would flood the console
+// at 30fps). This directly answers "is it a name-mismatch problem?"
+// without needing to eyeball two separate name lists by hand.
+let _loggedUnmatchedNames = false;
+let _loggedMatchSummary = false;
+
+function applyBlendshapes(bs) {
+  if (!headMesh) { console.warn('NO HEADMESH — cannot apply blendshapes'); return; }
+
+  const keys = Object.keys(bs);
+  if (keys.length === 0) {
+    // Matches the server-side "EMPTY bs_names" / header-race warning in
+    // receiver_streaming.py -- if you see this, the fix is server-side
+    // (the header race), not here.
+    console.warn('applyBlendshapes: received an EMPTY blendShapes dict ' +
+                  '(0 keys). This means A2F sent a frame with no names ' +
+                  'attached — check backend logs for "EMPTY bs_names" or ' +
+                  '"header arrived with an EMPTY blend_shapes list".');
+    return;
+  }
+
+  let matched = 0;
+  const unmatched = [];
+  for (const [key, val] of Object.entries(bs)) {
+    const idx = resolveMorph(key);
+    if (idx >= 0) {
+      headMesh.morphTargetInfluences[idx] = val;
+      if (teethMesh) teethMesh.morphTargetInfluences[idx] = val;
+      matched++;
+    } else {
+      unmatched.push(key);
+    }
+  }
+
+  if (!_loggedMatchSummary) {
+    console.log('applyBlendshapes: matched', matched, 'of', keys.length,
+                '(first frame — further frames log a one-line summary only if 0 matched)');
+    _loggedMatchSummary = true;
+  }
+
+  if (matched === 0 && !_loggedUnmatchedNames) {
+    // This is the definitive name-mismatch signal: A2F sent real names,
+    // but NONE of them exist in the GLB's morphTargetDictionary. Compare
+    // this exact list against the '[headMesh] full morph target list'
+    // logged at GLB load time above.
+    console.warn(
+      'applyBlendshapes: 0 of', keys.length, 'A2F blendshape names matched ' +
+      'the GLB morph targets. This is a NAME MISMATCH, not a data/timing ' +
+      'problem — audio and frames are arriving correctly, but none of the ' +
+      'shape names line up. A2F sent:', unmatched
+    );
+    _loggedUnmatchedNames = true;
+  }
+
+  // --- Fix B (session 3): capture emotion shape values from this frame
+  // into the persistent layer so applyEmotionLayer() can re-apply them
+  // on every render tick, even on frames where they'd otherwise be
+  // overwritten or omitted.
+  updateEmotionLayer(bs);
+}
+
+/* ── PROCEDURAL MOTION ───────────────────────────────── */
+const proc = {
+  t: 0, jawE: 0,
+  gazeTgt: new THREE.Euler(), gazeCur: new THREE.Euler(),
+  saccTimer: 0,
+  blinkTimer: 3, blinkPhase: 0, blinkT: 0, blinkW: 0,
+};
+
+function updateProcedural(dt) {
+  proc.t += dt;
+  const jawIdx = resolveMorph('jawOpen');
+  const jaw = headMesh ? (headMesh.morphTargetInfluences[jawIdx] ?? 0) : 0;
+  proc.jawE = jaw * 0.5 + proc.jawE * 0.5;
+  const e = 1 + proc.jawE * 0.4;
+
+  if (headBone) {
+    headBone.rotation.x = Math.sin(proc.t * 0.4) * 0.016 * e + Math.sin(proc.t * 1.1) * 0.005;
+    headBone.rotation.y = Math.sin(proc.t * 0.27) * 0.020 * e + Math.sin(proc.t * 0.83) * 0.007;
+    headBone.rotation.z = Math.sin(proc.t * 0.35) * 0.009;
+  }
+  proc.saccTimer -= dt;
+  if (proc.saccTimer <= 0) {
+    proc.gazeTgt.x = (Math.random() - 0.5) * 0.07;
+    proc.gazeTgt.y = (Math.random() - 0.5) * 0.05;
+    proc.saccTimer = 0.5 + Math.random() * 2.5;
+  }
+  const ls = 1 - Math.exp(-dt * 12);
+  proc.gazeCur.x += (proc.gazeTgt.x - proc.gazeCur.x) * ls;
+  proc.gazeCur.y += (proc.gazeTgt.y - proc.gazeCur.y) * ls;
+  if (eyeBoneL) { eyeBoneL.rotation.x = proc.gazeCur.x; eyeBoneL.rotation.y = proc.gazeCur.y; }
+  if (eyeBoneR) { eyeBoneR.rotation.x = proc.gazeCur.x; eyeBoneR.rotation.y = proc.gazeCur.y; }
+
+  proc.blinkTimer -= dt * (1 + proc.jawE);
+  if (proc.blinkPhase === 0 && proc.blinkTimer <= 0) {
+    proc.blinkPhase = 1; proc.blinkT = 0;
+    proc.blinkTimer = 2.5 + Math.random() * 3.5;
+  }
+  if (proc.blinkPhase === 1) {
+    proc.blinkT += dt / 0.07;
+    proc.blinkW = Math.min(proc.blinkT, 1);
+    if (proc.blinkT >= 1) { proc.blinkPhase = 2; proc.blinkT = 0; }
+  } else if (proc.blinkPhase === 2) {
+    proc.blinkT += dt / 0.12;
+    proc.blinkW = Math.max(1 - proc.blinkT, 0);
+    if (proc.blinkT >= 1) { proc.blinkPhase = 0; proc.blinkW = 0; }
+  }
+  if (headMesh) {
+    const bl = resolveMorph('eyeBlinkLeft'), br = resolveMorph('eyeBlinkRight');
+    const bc = resolveMorph('eyesClosed');
+    if (bl >= 0) headMesh.morphTargetInfluences[bl] = proc.blinkW;
+    if (br >= 0) headMesh.morphTargetInfluences[br] = proc.blinkW;
+    if (bc >= 0 && bl < 0) headMesh.morphTargetInfluences[bc] = proc.blinkW;
+  }
+}
+
+/* ── RENDER LOOP ─────────────────────────────────────── */
+let lastTime = performance.now();
+function startRenderLoop() {
+  function tick(now) {
+    requestAnimationFrame(tick);
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    resizeRenderer();
+    controls.update();
+    updateProcedural(dt);
+    applyEmotionLayer();        // --- Fix B (session 3): re-apply persistent emotion shapes every tick
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ── PLAYBACK ENGINE ─────────────────────────────────── */
+const player = {
+  audioCtx: null,
+  chunks: new Map(),
+  nextScheduleTime: 0,
+  activeChunkId: -1,
+  nextChunkIdToStart: 0,
+  totalChunksExpected: null,
+  allChunksReceived: false,
+  rafId: null,
+  pendingAudioHeader: null,
+};
+
+function makeChunk(chunkId) {
+  return { chunkId, wavBytes: null, frameQueue: [], frameIndex: 0,
+           ended: false, scheduled: false, audioStartTime: 0,
+           audioDuration: 0, useTimecodes: false };
+}
+function getOrCreateChunk(chunkId) {
+  if (!player.chunks.has(chunkId)) player.chunks.set(chunkId, makeChunk(chunkId));
+  return player.chunks.get(chunkId);
+}
+function ensureAudioCtx() {
+  if (!player.audioCtx) player.audioCtx = new AudioContext();
+  if (player.audioCtx.state === 'suspended') player.audioCtx.resume();
+}
+ensureAudioCtx();
+
+function resetPlayer() {
+  if (player.rafId) { cancelAnimationFrame(player.rafId); player.rafId = null; }
+  player.chunks = new Map();
+  player.nextScheduleTime = 0;
+  player.activeChunkId = -1;
+  player.nextChunkIdToStart = 0;
+  player.totalChunksExpected = null;
+  player.allChunksReceived = false;
+  player.pendingAudioHeader = null;
+}
+function chunkReadyToStart(chunk) {
+  return chunk.wavBytes !== null && (chunk.frameQueue.length >= BUFFER_AHEAD || chunk.ended);
+}
+function detectTimecodes(fq) {
+  if (fq.length < 2) return false;
+  return (fq[fq.length - 1].timeCode ?? 0) - (fq[0].timeCode ?? 0) > 0;
+}
+async function startChunk(chunk) {
+  chunk.scheduled = true;
+  ensureAudioCtx();
+  let audioBuf;
+  try { audioBuf = await player.audioCtx.decodeAudioData(chunk.wavBytes.slice(0)); }
+  catch (e) { setEngineNote('Chunk ' + chunk.chunkId + ' decode failed: ' + e.message); return; }
+  chunk.useTimecodes = detectTimecodes(chunk.frameQueue);
+  const now = player.audioCtx.currentTime;
+  const startAt = Math.max(player.nextScheduleTime, now + 0.03);
+  const src = player.audioCtx.createBufferSource();
+  src.buffer = audioBuf;
+  src.connect(player.audioCtx.destination);
+  src.start(startAt);
+  chunk.audioStartTime = startAt;
+  chunk.audioDuration = audioBuf.duration;
+  player.nextScheduleTime = startAt + audioBuf.duration;
+  if (player.activeChunkId === -1) {
+    player.activeChunkId = chunk.chunkId;
+    if (!player.rafId) driveFrames();
+  }
+}
+function tryAdvanceScheduling() {
+  while (true) {
+    const chunk = player.chunks.get(player.nextChunkIdToStart);
+    if (!chunk || chunk.scheduled || !chunkReadyToStart(chunk)) break;
+    startChunk(chunk);
+    player.nextChunkIdToStart++;
+  }
+}
+function driveFrames() {
+  const chunk = player.chunks.get(player.activeChunkId);
+  if (chunk && chunk.scheduled && player.audioCtx) {
+    const elapsed = player.audioCtx.currentTime - chunk.audioStartTime;
+    if (chunk.useTimecodes) {
+      while (chunk.frameIndex < chunk.frameQueue.length &&
+             chunk.frameQueue[chunk.frameIndex].timeCode <= elapsed) {
+        showFrame(chunk.frameQueue[chunk.frameIndex]); chunk.frameIndex++;
+      }
+    } else {
+      const target = Math.floor(elapsed / (FRAME_INTERVAL / 1000));
+      while (chunk.frameIndex <= target && chunk.frameIndex < chunk.frameQueue.length) {
+        showFrame(chunk.frameQueue[chunk.frameIndex]); chunk.frameIndex++;
+      }
+    }
+    if (elapsed >= chunk.audioDuration) {
+      const next = player.chunks.get(chunk.chunkId + 1);
+      if (next && next.scheduled) {
+        player.activeChunkId = next.chunkId;
+      } else if (player.allChunksReceived && chunk.ended &&
+                 chunk.chunkId + 1 >= (player.totalChunksExpected ?? Infinity)) {
+        finishPlayback(); return;
+      }
+    }
+  }
+  tryAdvanceScheduling();
+  player.rafId = requestAnimationFrame(driveFrames);
+}
+
+// DIAGNOSTIC (lip sync investigation): kept lightweight on purpose --
+// only logs jawOpen's live value once every ~15 frames (~0.5s at 30fps)
+// instead of every single frame, so it's actually readable in the
+// console instead of scrolling past instantly. Watch this while audio
+// is playing: if the value never changes from 0, frames are arriving
+// but not being scheduled/applied in time (a timing issue, separate
+// from the name-mismatch and empty-dict cases already flagged in
+// applyBlendshapes() above).
+let _frameLogCounter = 0;
+function showFrame(frame) {
+  applyBlendshapes(frame.blendShapes);
+  if (_frameLogCounter++ % 15 === 0) {
+    const jawIdx = resolveMorph('jawOpen');
+    console.log('jawOpen idx=', jawIdx, 'value=', headMesh?.morphTargetInfluences[jawIdx]);
+  }
+}
+function finishPlayback() {
+  if (player.rafId) { cancelAnimationFrame(player.rafId); player.rafId = null; }
+  setStatus('connected', 'Ready');
+  setInputEnabled(true);
+  setEngineNote('Done — ' + (player.totalChunksExpected ?? '?') + ' chunk(s) played');
+  if (currentAnswerBubble) currentAnswerBubble.classList.remove('streaming');
+}
+
+/* ── CHAT PANEL + HISTORY ────────────────────────────── */
+const chatMessagesEl = document.getElementById('chat-messages');
+const historyListEl  = document.getElementById('history-list');
+let turnCounter = 0;
+let currentTurnId = null;
+let currentAnswerBubble = null;
+let currentAnswerPair   = null;
+let answerAccumulated = '';
+const turns = [];
+
+function timeLabel() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function showAnswerPanel(question, mode) {
+  document.getElementById('chat-empty')?.remove();
+
+  turnCounter++;
+  const id = 'turn-' + turnCounter;
+  currentTurnId = id;
+  answerAccumulated = '';
+
+  const pair = document.createElement('div');
+  pair.className = 'msg-pair';
+  pair.id = id;
+
+  const userRowClass = mode === 'web' ? 'msg-row user web-mode' : 'msg-row user';
+
+  pair.innerHTML = `
+    <div class="${userRowClass}">
+      <div>
+        <div class="msg-bubble"></div>
+        <div class="msg-time">${timeLabel()}</div>
+      </div>
+    </div>
+    <div class="msg-row assistant">
+      <div class="msg-bubble streaming"></div>
+    </div>
+  `;
+  pair.querySelector('.msg-row.user .msg-bubble').textContent = question;
+  chatMessagesEl.appendChild(pair);
+  currentAnswerBubble = pair.querySelector('.msg-row.assistant .msg-bubble');
+  currentAnswerPair   = pair;
+  pair.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+  turns.push({ id, question, time: timeLabel(), mode });
+  renderHistory();
+}
+
+function appendAnswerText(fragment) {
+  answerAccumulated += (answerAccumulated ? ' ' : '') + fragment;
+  if (currentAnswerBubble) currentAnswerBubble.textContent = answerAccumulated;
+  chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+}
+
+function showSources(sources) {
+  if (!currentAnswerPair || !sources || sources.length === 0) return;
+
+  const card = document.createElement('div');
+  card.className = 'sources-card';
+  card.innerHTML = '<div class="sources-label">🌐 Web sources</div>';
+
+  sources.slice(0, 5).forEach(src => {
+    const url   = (typeof src === 'string') ? src : (src.url || src.link || '');
+    const label = (typeof src === 'object' && src.title) ? src.title : url;
+    if (!url) return;
+    const a = document.createElement('a');
+    a.href   = url;
+    a.target = '_blank';
+    a.rel    = 'noopener noreferrer';
+    a.title  = url;
+    a.textContent = label;
+    card.appendChild(a);
+  });
+
+  const assistantRow = currentAnswerPair.querySelector('.msg-row.assistant');
+  assistantRow.after(card);
+  chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+}
+
+function hideAnswerPanel() {
+  chatMessagesEl.scrollTop = 0;
+}
+
+function renderHistory() {
+  if (turns.length === 0) {
+    historyListEl.innerHTML = '<div id="history-empty">Your questions will show up here as you ask them.</div>';
+    return;
+  }
+  historyListEl.innerHTML = '<div class="history-group-label">Today</div>';
+  for (let i = turns.length - 1; i >= 0; i--) {
+    const t   = turns[i];
+    const btn = document.createElement('button');
+    btn.className = 'history-item' + (t.id === currentTurnId ? ' active' : '');
+    const modeBadge = `<span class="h-mode ${t.mode}">${t.mode === 'web' ? 'Web' : 'RAG'}</span>`;
+    btn.innerHTML = `
+      <span class="history-text">${escapeHtml(t.question)}${modeBadge}<span class="h-time">${t.time}</span></span>
+      <div class="history-actions">
+        <button class="h-action-btn" title="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"/></svg></button>
+        <button class="h-action-btn" title="Rename"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+        <button class="h-action-btn" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      </div>`;
+    btn.addEventListener('click', (e) => {
+      if(e.target.closest('.h-action-btn')) return; // ignore action clicks
+      const target = document.getElementById(t.id);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+      btn.classList.add('active');
+    });
+    historyListEl.appendChild(btn);
+  }
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/* ── SIDEBAR TOGGLE ──────────────────────────────────── */
+const sidebarEl      = document.getElementById('sidebar');
+const sidebarOpenBtn = document.getElementById('sidebar-open-btn');
+const sidebarCloseBtn= document.getElementById('sidebar-close-btn');
+
+function setSidebarOpen(open) {
+  sidebarEl.classList.toggle('collapsed', !open);
+  sidebarOpenBtn.style.display = open ? 'none' : 'flex';
+}
+sidebarCloseBtn.addEventListener('click', () => setSidebarOpen(false));
+sidebarOpenBtn.addEventListener('click',  () => setSidebarOpen(true));
+
+/* ── DOCUMENTS LIST ──────────────────────────────────── */
+const docsListEl   = document.getElementById('docs-list');
+const docBadge     = document.getElementById('doc-badge');
+const docBadgeName = document.getElementById('doc-badge-name');
+const uploadedDocs = [];
+
+function addUploadedDoc(name, chunks) {
+  uploadedDocs.push({ name, chunks });
+  renderDocsList();
+  docBadge.classList.add('show');
+  docBadgeName.textContent = name;
+  document.getElementById('plus-btn').classList.add('has-doc');
+}
+function renderDocsList() {
+  if (uploadedDocs.length === 0) {
+    docsListEl.innerHTML = '<div id="docs-empty">No documents uploaded yet</div>';
+    return;
+  }
+  docsListEl.innerHTML = '';
+  for (const d of uploadedDocs) {
+    const chip = document.createElement('div');
+    chip.className = 'doc-chip';
+    chip.innerHTML = `<span class="doc-icon">📄</span><span class="doc-name">${escapeHtml(d.name)}</span><span class="doc-meta">${d.chunks ?? '?'}c</span>`;
+    docsListEl.appendChild(chip);
+  }
+}
+
+/* ── UPLOAD POPOVER ──────────────────────────────────── */
+const popover           = document.getElementById('upload-popover');
+const plusBtn           = document.getElementById('plus-btn');
+const dropZone          = document.getElementById('drop-zone');
+const fileInput         = document.getElementById('file-input');
+const uploadFreshEl     = document.getElementById('upload-fresh');
+const uploadConfirmedEl = document.getElementById('upload-confirmed');
+const uploadAgainBtn    = document.getElementById('upload-again-btn');
+let selectedFile = null;
+
+function togglePopover() {
+  const open = popover.classList.toggle('open');
+  plusBtn.classList.toggle('active', open);
+}
+function closePopover() {
+  popover.classList.remove('open');
+  plusBtn.classList.remove('active');
+}
+
+plusBtn.addEventListener('click', (e) => { e.stopPropagation(); togglePopover(); });
+document.addEventListener('click', (e) => {
+  if (!popover.contains(e.target) && e.target !== plusBtn) closePopover();
+});
+
+dropZone.addEventListener('dragover',  (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) setSelectedFile(f);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) setSelectedFile(fileInput.files[0]);
+});
+
+function setSelectedFile(f) {
+  selectedFile = f;
+  document.getElementById('selected-file-name').textContent = f.name;
+  document.getElementById('selected-file').classList.add('visible');
+  document.getElementById('upload-action-btn').disabled = false;
+  setUploadStatus('', '');
+}
+function clearSelectedFile() {
+  selectedFile = null;
+  fileInput.value = '';
+  document.getElementById('selected-file').classList.remove('visible');
+  document.getElementById('selected-file-name').textContent = '';
+  document.getElementById('upload-action-btn').disabled = true;
+  setUploadStatus('', '');
+}
+document.getElementById('selected-file-clear').addEventListener('click', clearSelectedFile);
+
+document.getElementById('upload-action-btn').addEventListener('click', async () => {
+  if (!selectedFile || !ws || ws.readyState !== WebSocket.OPEN) return;
+  const btn = document.getElementById('upload-action-btn');
+  btn.disabled = true;
+  setUploadStatus('', 'Uploading ' + selectedFile.name + '…');
+  setEngineNote('Uploading: ' + selectedFile.name + ' (' + selectedFile.size + ' bytes)');
+  try {
+    const buf = await selectedFile.arrayBuffer();
+    ws.send(JSON.stringify({ type: 'upload_document', filename: selectedFile.name, size: selectedFile.size, reset: true }));
+    ws.send(buf);
+  } catch (e) {
+    setUploadStatus('err', 'Read failed: ' + e.message);
+    btn.disabled = false;
+  }
+});
+
+uploadAgainBtn.addEventListener('click', () => {
+  uploadConfirmedEl.classList.remove('show');
+  uploadFreshEl.style.display = '';
+  uploadAgainBtn.classList.remove('show');
+  clearSelectedFile();
+});
+
+function setUploadStatus(cls, text) {
+  const el = document.getElementById('upload-status');
+  el.className = cls; el.textContent = text;
+}
+
+/* ── ASK (RAG or Web) ────────────────────────────────── */
+document.getElementById('send-btn').addEventListener('click', sendAsk);
+document.getElementById('ask-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendAsk();
+});
+
+function sendAsk() {
+  ensureAudioCtx();
+  const question = document.getElementById('ask-input').value.trim();
+  if (!question || !ws || ws.readyState !== WebSocket.OPEN) return;
+  const mode = currentMode;
+  resetPlayer();
+  ws.send(JSON.stringify({ type: 'ask', question, mode }));
+  setInputEnabled(false);
+  setStatus('speaking', mode === 'web' ? 'Searching…' : 'Retrieving…');
+  setEngineNote((mode === 'web' ? '[Web] ' : '[RAG] ') + 'Asked: "' + question.slice(0, 55) + (question.length > 55 ? '…' : '') + '"');
+  showAnswerPanel(question, mode);
+  document.getElementById('ask-input').value = '';
+  closePopover();
+}
+
+/* ── VOICE INPUT ─────────────────────────────────────── */
+let mediaRecorder = null;
+let audioChunks   = [];
+let isRecording   = false;
+
+async function startVoiceRecording() {
+  if (!ws || ws.readyState !== WebSocket.OPEN || isRecording) return;
+  ensureAudioCtx();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks  = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunks.push(e.data);
+    };
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      sendVoiceAsk(blob);
+    };
+    mediaRecorder.start();
+    isRecording = true;
+    document.getElementById('mic-btn').classList.add('recording');
+    setStatus('speaking', 'Listening…');
+    setEngineNote('Recording voice input…');
+  } catch (err) {
+    setEngineNote('Mic error: ' + err.message);
+  }
+}
+
+function stopVoiceRecording() {
+  if (!isRecording || !mediaRecorder) return;
+  isRecording = false;
+  document.getElementById('mic-btn').classList.remove('recording');
+  document.getElementById('mic-btn').classList.add('processing');
+  setStatus('speaking', 'Transcribing…');
+  mediaRecorder.stop();
+}
+
+async function sendVoiceAsk(blob) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    document.getElementById('mic-btn').classList.remove('processing');
+    return;
+  }
+  const mode = currentMode;
+  resetPlayer();
+  ws.send(JSON.stringify({ type: 'voice_ask', mode }));
+  const buf = await blob.arrayBuffer();
+  ws.send(buf);
+}
+
+const micBtn = document.getElementById('mic-btn');
+micBtn.addEventListener('mousedown',  startVoiceRecording);
+micBtn.addEventListener('mouseup',    stopVoiceRecording);
+micBtn.addEventListener('mouseleave', () => { if (isRecording) stopVoiceRecording(); });
+micBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startVoiceRecording(); });
+micBtn.addEventListener('touchend',   (e) => { e.preventDefault(); stopVoiceRecording(); });
+
+/* ── WEBSOCKET ───────────────────────────────────────── */
+let ws = null;
+
+function connectWS() {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+  ws = new WebSocket(WS_URL);
+  ws.binaryType = 'arraybuffer';
+
+  ws.onopen = () => {
+    setStatus('connected', 'Ready');
+    setInputEnabled(true);
+    setEngineNote('Connected');
+  };
+  ws.onclose = () => {
+    setStatus('', 'Disconnected — retrying…');
+    setInputEnabled(false);
+    setTimeout(connectWS, 3000);
+  };
+  ws.onerror = () => setStatus('error', 'Connection error');
+
+  ws.onmessage = (event) => {
+    if (event.data instanceof ArrayBuffer) {
+      const header = player.pendingAudioHeader;
+      if (!header) { setEngineNote('Binary frame without audio_header — restart bridge_server.py'); return; }
+      player.pendingAudioHeader = null;
+      const chunk = getOrCreateChunk(header.chunkId);
+      chunk.wavBytes = event.data;
+      player.totalChunksExpected = header.totalChunks ?? player.totalChunksExpected;
+      setStatus('speaking', 'Speaking…');
+      tryAdvanceScheduling();
+      return;
+    }
+
+    let msg;
+    try { msg = JSON.parse(event.data); } catch { return; }
+
+    switch (msg.type) {
+      case 'audio_header':
+        player.pendingAudioHeader = msg;
+        break;
+
+      case 'blendshapes': {
+        const chunk = getOrCreateChunk(msg.chunkId ?? 0);
+        chunk.frameQueue.push(msg);
+        tryAdvanceScheduling();
+        break;
+      }
+
+      case 'chunk_end': {
+        const chunk = getOrCreateChunk(msg.chunkId ?? 0);
+        chunk.ended = true;
+        tryAdvanceScheduling();
+        break;
+      }
+
+      case 'all_done':
+        player.allChunksReceived = true;
+        player.totalChunksExpected = msg.totalChunks;
+        if (player.activeChunkId === -1) finishPlayback();
+        break;
+
+      case 'response_text':
+        appendAnswerText(msg.text);
+        break;
+
+      case 'sources':
+        showSources(msg.sources);
+        break;
+
+      case 'transcript':
+        document.getElementById('mic-btn').classList.remove('processing');
+        showAnswerPanel(msg.text, currentMode);
+        setStatus('speaking', currentMode === 'web' ? 'Searching…' : 'Retrieving…');
+        setEngineNote('Heard: "' + msg.text.slice(0, 60) + (msg.text.length > 60 ? '…' : '') + '"');
+        break;
+
+      case 'upload_done': {
+        const filename = msg.filename ?? (selectedFile ? selectedFile.name : 'document');
+        const chunks   = msg.chunks ?? '?';
+        setUploadStatus('ok', '✓ Ingested ' + chunks + ' chunks — ' + filename);
+        document.getElementById('upload-action-btn').disabled = false;
+        document.getElementById('uc-filename').textContent = filename;
+        document.getElementById('uc-meta').textContent     = chunks + ' chunks ingested';
+        uploadConfirmedEl.classList.add('show');
+        uploadFreshEl.style.display = 'none';
+        uploadAgainBtn.classList.add('show');
+        clearSelectedFile();
+        addUploadedDoc(filename, chunks);
+        break;
+      }
+
+      case 'upload_progress':
+        setUploadStatus('', msg.message ?? 'Ingesting…');
+        break;
+
+      case 'error':
+        setStatus('error', msg.message);
+        setUploadStatus('err', msg.message);
+        document.getElementById('upload-action-btn').disabled = false;
+        document.getElementById('mic-btn').classList.remove('recording', 'processing');
+        resetPlayer();
+        setInputEnabled(true);
+        if (currentAnswerBubble) currentAnswerBubble.classList.remove('streaming');
+        break;
+    }
+  };
+}
+
+/* ── UI HELPERS ──────────────────────────────────────── */
+function setStatus(cls, text) {
+  document.getElementById('dot').className = cls;
+  document.getElementById('status-text').textContent = text;
+}
+function setEngineNote(msg) {
+  document.getElementById('engine-note').textContent = msg;
+}
+function setInputEnabled(enabled) {
+  document.getElementById('ask-input').disabled = !enabled;
+  document.getElementById('send-btn').disabled  = !enabled;
+}
+
+/* ── BOOT ────────────────────────────────────────────── */
+setInputEnabled(false);
+connectWS();
+</script>
+</body>
+</html>

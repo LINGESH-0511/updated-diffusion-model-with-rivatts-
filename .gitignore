@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# RAG vector storage (generated data, not source)
+qdrant_storage/
+
+# Model caches
+*.pt
+*.bin
+*.onnx
+.cache/
+
+# Logs
+*.log
+
+# Env secrets
+.env
+
+# OS junk
+.DS_Store
+Thumbs.db
+models/  
+ 
+# Exclude huge binaries and a2f cache
+*.exe
+Audio2Face-3D-Samples/quick-start/a2f-3d-init-data/
+*.trt
+

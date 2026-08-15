@@ -1,0 +1,28 @@
+# Qdrant server-mode service for the A2F RAG rebuild.
+#
+# Why a separate compose file: merge this into your existing A2F docker-compose.yml
+# (if you have one) by copy-pasting the `qdrant:` service block below into it,
+# OR run this standalone alongside your existing setup with:
+#   docker compose -f docker-compose.qdrant.yml up -d
+#
+# This replaces Qdrant's local-file mode entirely. The old
+# `RuntimeError: Storage folder ... already accessed by another instance`
+# bug is a local-file-mode-only issue — server mode has no such lock,
+# because the server process (not your app process) owns the storage.
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: a2f_qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"   # REST API
+      - "6334:6334"   # gRPC API (faster, used by qdrant-client by default when available)
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+
+volumes:
+  qdrant_data:
+    driver: local

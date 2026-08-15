@@ -1,0 +1,190 @@
+face_parameters:
+  upperFaceStrength: 1
+  upperFaceSmoothing: 0.001
+  lowerFaceStrength: 1.2
+  lowerFaceSmoothing: 0.006
+  faceMaskLevel: 0.6
+  faceMaskSoftness: 0.0085
+  skinStrength: 1.05
+  eyelidOpenOffset: 0.06
+  lipOpenOffset: -0.03
+  tongueStrength: 1.3
+  tongueHeightOffset: 0.0
+  tongueDepthOffset: 0.0
+
+blendshape_parameters:
+  enable_clamping_bs_weight: False
+  multipliers:
+    EyeBlinkLeft: 1.0
+    EyeLookDownLeft: 0.0
+    EyeLookInLeft: 0.0
+    EyeLookOutLeft: 0.0
+    EyeLookUpLeft: 0.0
+    EyeSquintLeft: 1.0
+    EyeWideLeft: 1.0
+    EyeBlinkRight: 1.0
+    EyeLookDownRight: 0.0
+    EyeLookInRight: 0.0
+    EyeLookOutRight: 0.0
+    EyeLookUpRight: 0.0
+    EyeSquintRight: 1.0
+    EyeWideRight: 1.0
+    JawForward: 0.7
+    JawLeft: 0.2
+    JawRight: 0.2
+    JawOpen: 0.8
+    MouthClose: 0.3
+    MouthFunnel: 1.0
+    MouthPucker: 1.0
+    MouthLeft: 0.2
+    MouthRight: 0.2
+    # --- Fix G (this session): diagnostic_emotion_test.py confirmed
+    # MouthSmileLeft/Right DOES change with emotion (0.0011 neutral ->
+    # 0.0207 joy) but the raw magnitude was too small to read on the
+    # avatar even at full preferred_emotion weight. Raised from 1.2 to
+    # 1.8 -- still well under the old 3.0 that caused the frozen grin,
+    # but enough to make the signal visible once combined with the
+    # frontend gain (see index.html EMOTION_GAIN).
+    MouthSmileLeft: 1.3      # dialed back from 2.0 to fix weird mouth
+    MouthSmileRight: 1.3     # dialed back from 2.0 to fix weird mouth
+    MouthFrownLeft: 1.2      # dialed back slightly for balance
+    MouthFrownRight: 1.2     # dialed back slightly for balance
+    MouthDimpleLeft: 0.8
+    MouthDimpleRight: 0.8
+    MouthStretchLeft: 0.05
+    MouthStretchRight: 0.05
+    MouthRollLower: 0.8
+    MouthRollUpper: 0.5
+    MouthShrugLower: 1.0
+    MouthShrugUpper: 0.4
+    MouthPressLeft: 0.8
+    MouthPressRight: 0.8
+    MouthLowerDownLeft: 0.8
+    MouthLowerDownRight: 0.8
+    MouthUpperUpLeft: 0.8
+    MouthUpperUpRight: 0.8
+    # --- Fix G: diagnostic showed BrowInnerUp and BrowDownLeft/Right have
+    # the STRONGEST emotion-correlated signal of any shape tested
+    # (BrowInnerUp: 0.02 neutral -> 0.24 sadness; BrowDownLeft/Right:
+    # ~0.0 neutral -> 0.24 anger). Boosted further than mouth shapes
+    # specifically because these are proven to carry real signal, not noise.
+    BrowDownLeft: 1.6         # was 1.2
+    BrowDownRight: 1.6        # was 1.2
+    BrowInnerUp: 1.8          # was 1.3
+    BrowOuterUpLeft: 0.8
+    BrowOuterUpRight: 0.8
+    CheekPuff: 0.2
+    # Left at baseline -- diagnostic confirmed these are FLAT (no
+    # consistent direction vs emotion), i.e. noise, not signal. Do not
+    # raise these; doing so amplifies flicker, not expression.
+    CheekSquintLeft: 1.0
+    CheekSquintRight: 1.0
+    NoseSneerLeft: 0.8
+    NoseSneerRight: 0.8
+    TongueOut: 0.0
+    TongueTipUp: 1.0
+    TongueTipDown: 1.0
+    TongueTipLeft: 1.0
+    TongueTipRight: 1.0
+    TongueRollUp: 1.0
+    TongueRollDown: 1.0
+    TongueRollLeft: 1.0
+    TongueRollRight: 1.0
+    TongueUp: 1.0
+    TongueDown: 1.0
+    TongueLeft: 1.0
+    TongueRight: 1.0
+    TongueIn: 1.0
+    TongueStretch: 1.0
+    TongueWide: 1.0
+    TongueNarrow: 1.0
+  offsets:
+    EyeBlinkLeft: 0.0
+    EyeLookDownLeft: 0.0
+    EyeLookInLeft: 0.0
+    EyeLookOutLeft: 0.0
+    EyeLookUpLeft: 0.0
+    EyeSquintLeft: 0.0
+    EyeWideLeft: 0.0
+    EyeBlinkRight: 0.0
+    EyeLookDownRight: 0.0
+    EyeLookInRight: 0.0
+    EyeLookOutRight: 0.0
+    EyeLookUpRight: 0.0
+    EyeSquintRight: 0.0
+    EyeWideRight: 0.0
+    JawForward: 0.0
+    JawLeft: 0.0
+    JawRight: 0.0
+    JawOpen: 0.0
+    MouthClose: 0.0
+    MouthFunnel: 0.0
+    MouthPucker: 0.0
+    MouthLeft: 0.0
+    MouthRight: 0.0
+    MouthSmileLeft: 0.0
+    MouthSmileRight: 0.0
+    MouthFrownLeft: 0.0
+    MouthFrownRight: 0.0
+    MouthDimpleLeft: 0.0
+    MouthDimpleRight: 0.0
+    MouthStretchLeft: 0.0
+    MouthStretchRight: 0.0
+    MouthRollLower: 0.0
+    MouthRollUpper: 0.0
+    MouthShrugLower: 0.0
+    MouthShrugUpper: 0.0
+    MouthPressLeft: 0.0
+    MouthPressRight: 0.0
+    MouthLowerDownLeft: 0.0
+    MouthLowerDownRight: 0.0
+    MouthUpperUpLeft: 0.0
+    MouthUpperUpRight: 0.0
+    BrowDownLeft: 0.0
+    BrowDownRight: 0.0
+    BrowInnerUp: 0.0
+    BrowOuterUpLeft: 0.0
+    BrowOuterUpRight: 0.0
+    CheekPuff: 0.0
+    CheekSquintLeft: 0.0
+    CheekSquintRight: 0.0
+    NoseSneerLeft: 0.0
+    NoseSneerRight: 0.0
+    TongueOut: 0.0
+    TongueTipUp: 0.0
+    TongueTipDown: 0.0
+    TongueTipLeft: 0.0
+    TongueTipRight: 0.0
+    TongueRollUp: 0.0
+    TongueRollDown: 0.0
+    TongueRollLeft: 0.0
+    TongueRollRight: 0.0
+    TongueUp: 0.0
+    TongueDown: 0.0
+    TongueLeft: 0.0
+    TongueRight: 0.0
+    TongueIn: 0.0
+    TongueStretch: 0.0
+    TongueWide: 0.0
+    TongueNarrow: 0.0
+
+live_transition_time: 0.0001
+
+beginning_emotion:
+  amazement: 0.0
+  anger: 0.0
+  disgust: 0.0
+  fear: 0.0
+  outofbreath: 0.0
+  pain: 0.0
+  sadness: 0.0
+
+post_processing_parameters:
+  emotion_contrast: 1.0
+  live_blend_coef: 0.7
+  enable_preferred_emotion: true
+  preferred_emotion_strength: 1.0   # was 0.75 ?" full trust in text-derived emotion, zero A2E blending
+  emotion_strength: 1.0
+  max_emotions: 3
+
+emotion_with_timecode_list: {}
