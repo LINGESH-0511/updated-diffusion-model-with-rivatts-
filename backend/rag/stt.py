@@ -50,7 +50,11 @@ def transcribe_audio_bytes(audio_bytes: bytes, filename: str = "voice_input.webm
     if resp.status_code != 200:
         try:
             detail = resp.json().get("error", {}).get("message", resp.text)
-        except Exception:
+            if "too short" in detail.lower():
+                raise RuntimeError("Audio was too short. Please hold the mic button down while speaking, then release.")
+        except Exception as e:
+            if isinstance(e, RuntimeError):
+                raise
             detail = resp.text
         raise RuntimeError(f"Groq transcription failed ({resp.status_code}): {detail}")
 

@@ -50,24 +50,13 @@ _SAMPLE_RATE = 22050   # Riva returns 22050 Hz PCM for Magpie
 
 # Emotion → speed rate (1.0 = normal).
 _EMOTION_RATE: dict[str, float] = {
-    "neutral":      1.00,
-    "professional": 1.05,
-    "friendly":     1.05,
-    "supportive":   0.95,
-    "joy":          1.10,
-    "amazement":    1.08,
-    "cheekiness":   1.08,
-    "sad":          0.85,
-    "sadness":      0.85,
-    "grief":        0.80,
-    "fear":         1.00,
-    "pain":         0.92,
-    "disgust":      1.00,
-    "anger":        1.12,
-    "outofbreath":  1.05,
+    "professional": 1.05,   # Slightly brisk, confident and efficient
+    "friendly":     1.02,   # Natural, conversational upbeat pace
+    "supportive":   0.92,   # Calmer, slower, comforting without sounding distorted
+    "sad":          0.85,   # Noticeably slower, hesitant and somber
 }
 
-_DEFAULT_EMOTION = "neutral"
+_DEFAULT_EMOTION = "professional"
 
 # Riva gRPC call is thread-safe.
 _service_lock = threading.Lock()

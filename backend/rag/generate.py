@@ -44,9 +44,6 @@ def _get_groq_client() -> Groq:
     return _groq_client
 
 
-# Single leading tag before the WHOLE answer — not per sentence.
-# bridge_server.py's _handle_ask() parses this tag once and applies
-# it to every chunk of the answer so facial expression is consistent.
 SYSTEM_PROMPT = (
     "You are ARIA, a professional and empathetic AI avatar assistant. "
     "Answer the user's question using ONLY the provided context. "

@@ -71,6 +71,9 @@ Emotion → A2F wiring:
     sadness. VALID_EMOTIONS and _EMOTION_REMAP are constrained to these.
 """
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 if os.name == "nt":
     _cudnn_bin = r"E:\a2f_env\Lib\site-packages\nvidia\cudnn\bin"
@@ -733,6 +736,16 @@ async def handle_client(ws):
                         await ws.send(json.dumps({
                             "type": "error",
                             "message": "Transcription returned empty text -- try speaking again.",
+                        }))
+                        continue
+
+                    # Filter out common Whisper hallucinations for silence/background noise
+                    clean_ts = transcript.strip().lower()
+                    hallucinations = {"you", "you.", "thank you", "thank you.", "thanks", "thanks.", "thanks for watching", "thanks for watching.", "subscribe", ".", ""}
+                    if clean_ts in hallucinations:
+                        await ws.send(json.dumps({
+                            "type": "error",
+                            "message": f"Transcription was '{transcript}' (likely silence hallucination) -- try speaking again.",
                         }))
                         continue
 
